@@ -2,3 +2,4 @@
 1. Aho Corasick algorithm
 2. Rabin-Karp algorithm
 3. Segment tree
+4. Finding the lowest common ancestor
