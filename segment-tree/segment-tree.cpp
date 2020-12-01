@@ -1,5 +1,7 @@
 #include<iostream>
 #include<algorithm>
+#include<vector>
+#include<functional>
 #define NEG_INF -1000000009
 using namespace std;
 
@@ -9,11 +11,9 @@ using namespace std;
  */
 class SegmentTree {
   private:
-    int *vals;
-    int *lazy;
     int d;
-    int max_aux(int, int, int, int, int);
-    void add_aux(int, int, int, int, int, int);
+    vector<int> vals;
+    vector<int> lazy;
     void push(int);
   public:
     SegmentTree(int);
@@ -21,19 +21,49 @@ class SegmentTree {
     void add_val(int, int, int);
 };
 
-SegmentTree::SegmentTree(int n) {
-  d = 2;
-  while (d < n) d *= 2;
-  vals = new int[2 * d]();
-  lazy = new int[2 * d]();
-}
+SegmentTree::SegmentTree(int n) : d{
+  [n]() -> int{
+    int m = 2;
+    while (m < n) m *= 2;
+    return m;
+  }()}, vals{2 * d}, lazy{2 * d} {
+    vals.resize(2 * d);
+    lazy.resize(2 * d);
+  }
 
 int SegmentTree::get_max(int p, int q) {
-  return max_aux(p, q, 0, d - 1, 1);
+  std::function<int(int, int, int, int, int)> max_func;
+  max_func = [&](int p, int q, int a, int b, int v) -> int {
+    if (q < a || p > b) return NEG_INF;
+    if (p <= a && q >= b) return vals[v];
+
+    push(v);
+    return max(
+      max_func(p, q, a, (a + b) / 2, 2 * v),
+      max_func(p, q, (a + b) / 2 + 1, b, 2 * v + 1)
+    );
+  };
+
+  return max_func(p, q, 0, d - 1, 1);
 }
 
 void SegmentTree::add_val(int p, int q, int val) {
-  return add_aux(p, q, 0, d - 1, 1, val);
+  std::function<void(int, int, int, int, int, int)> add_func;
+  add_func = [&](int p, int q, int a, int b, int v, int val) -> void {
+    if (q < a || p > b) {
+      return;
+    } else if (p <= a && q >= b) {
+      vals[v] += val;
+      lazy[v] += val;
+    } else {
+      push(v);
+      add_func(p, q, a, (a + b) / 2, 2 * v, val);
+      add_func(p, q, (a + b) / 2 + 1, b, 2 * v + 1, val);
+      vals[v] = max(vals[v * 2], vals[v * 2 + 1]);
+    }
+  };
+
+  return add_func(p, q, 0, d - 1, 1, val);
 }
 
 void SegmentTree::push(int v) {
@@ -44,41 +74,16 @@ void SegmentTree::push(int v) {
   lazy[v] = 0;
 }
 
-int SegmentTree::max_aux(int p, int q, int a, int b, int v) {
-  if (q < a || p > b) return NEG_INF;
-  if (p <= a && q >= b) return vals[v];
-
-  push(v);
-  return max(
-    max_aux(p, q, a, (a + b) / 2, 2 * v),
-    max_aux(p, q, (a + b) / 2 + 1, b, 2 * v + 1)
-  );
-}
-
-void SegmentTree::add_aux(int p, int q, int a, int b, int v, int val) {
-  if (q < a || p > b) {
-    return;
-  } else if (p <= a && q >= b) {
-    vals[v] += val;
-    lazy[v] += val;
-  } else {
-    push(v);
-    add_aux(p, q, a, (a + b) / 2, 2 * v, val);
-    add_aux(p, q, (a + b) / 2 + 1, b, 2 * v + 1, val);
-    vals[v] = max(vals[v * 2], vals[v * 2 + 1]);
-  }
-}
-
 // example
 int main() {
-  SegmentTree *st = new SegmentTree(10);
-  st->add_val(0, 3, 5);
-  st->add_val(2, 5, 2);
-  st->add_val(1, 2, -3);
+  SegmentTree st{10};
+  st.add_val(0, 3, 5);
+  st.add_val(2, 5, 2);
+  st.add_val(1, 2, -3);
 
-  cout << st->get_max(2, 2); // Should be 4
-  cout << st->get_max(0, 1); // Should be 5
-  cout << st->get_max(3, 10); // Should be 7
+  cout << st.get_max(2, 2); // Should be 4
+  cout << st.get_max(0, 1); // Should be 5
+  cout << st.get_max(3, 10); // Should be 7
 
   return 0;
 }
